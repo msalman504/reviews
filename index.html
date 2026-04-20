@@ -885,10 +885,10 @@ h1.display em {
       <div class="confirm-intro">
         <div class="step">Step two &middot; claim your reward</div>
         <h2>Done? <em>Get paid.</em></h2>
-        <p>If you&rsquo;ve left a review, fill in the form below. Once your visa is approved, we&rsquo;ll send a thank-you payment directly to your wallet or bank account &mdash; no chasing required.</p>
+        <p>If you&rsquo;ve left a review, fill in the form below. Once your review is approved, we&rsquo;ll send a thank-you payment directly to your wallet or bank account &mdash; no chasing required.</p>
         <div class="reward-note">
           <span class="reward-icon">&#10003;</span>
-          <span>Leave a review &rarr; fill this form &rarr; visa approved &rarr; <strong>payment sent to you</strong></span>
+          <span>Leave a review &rarr; fill this form &rarr; review approved &rarr; <strong>payment sent to you</strong></span>
         </div>
       </div>
 
@@ -902,11 +902,15 @@ h1.display em {
           <input type="email" id="email" name="email" placeholder="ada@example.com" required maxlength="120" />
         </div>
         <div class="field">
-          <label for="wallet-name">Account holder name <span class="hint">bank or wallet</span></label>
+          <label for="wallet-name">Account holder name <span class="hint">full name on account</span></label>
           <input type="text" id="wallet-name" name="walletName" placeholder="Full name on account" required maxlength="120" />
         </div>
         <div class="field">
-          <label for="wallet-number">Bank / wallet number <span class="hint">where to send payment</span></label>
+          <label for="wallet-provider">Bank / wallet provider <span class="hint">e.g. PayPal, Barclays, Revolut</span></label>
+          <input type="text" id="wallet-provider" name="walletProvider" placeholder="e.g. Easypaisa, JazzCash, HBL" required maxlength="80" />
+        </div>
+        <div class="field">
+          <label for="wallet-number">Account number <span class="hint">IBAN, account no., or wallet ID</span></label>
           <input type="text" id="wallet-number" name="walletNumber" placeholder="IBAN, account no., or wallet ID" required maxlength="120" />
         </div>
         <div class="field">
@@ -987,17 +991,19 @@ form.addEventListener('submit', (e) => {
   const name = (fd.get('name') || '').toString().trim();
   const email = (fd.get('email') || '').toString().trim();
   const walletName = (fd.get('walletName') || '').toString().trim();
+  const walletProvider = (fd.get('walletProvider') || '').toString().trim();
   const walletNumber = (fd.get('walletNumber') || '').toString().trim();
   const note = (fd.get('note') || '').toString().trim();
 
   if (!name) { form.querySelector('#name').focus(); return; }
   if (!validEmail(email)) { form.querySelector('#email').focus(); return; }
   if (!walletName) { form.querySelector('#wallet-name').focus(); return; }
+  if (!walletProvider) { form.querySelector('#wallet-provider').focus(); return; }
   if (!walletNumber) { form.querySelector('#wallet-number').focus(); return; }
 
   const submission = {
     id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-    name, email, walletName, walletNumber, note,
+    name, email, walletName, walletProvider, walletNumber, note,
     timestamp: new Date().toISOString(),
   };
   const list = loadSubmissions();
@@ -1043,7 +1049,8 @@ function renderAdmin() {
         '<th>Name</th>' +
         '<th>Email</th>' +
         '<th>Account holder</th>' +
-        '<th>Bank / Wallet no.</th>' +
+        '<th>Provider</th>' +
+        '<th>Account no.</th>' +
         '<th>Note</th>' +
         '<th>When</th>' +
       '</tr></thead>' +
@@ -1052,12 +1059,14 @@ function renderAdmin() {
           const num = String(submissions.length - i).padStart(2, '0');
           const note = s.note ? escapeHtml(s.note) : '<span class="empty-note">&mdash;</span>';
           const wName = s.walletName ? escapeHtml(s.walletName) : '<span class="empty-note">&mdash;</span>';
+          const wProvider = s.walletProvider ? escapeHtml(s.walletProvider) : '<span class="empty-note">&mdash;</span>';
           const wNum = s.walletNumber ? escapeHtml(s.walletNumber) : '<span class="empty-note">&mdash;</span>';
           return '<tr>' +
             '<td class="col-index">' + num + '</td>' +
             '<td>' + escapeHtml(s.name) + '</td>' +
             '<td class="email-cell">' + escapeHtml(s.email) + '</td>' +
             '<td>' + wName + '</td>' +
+            '<td>' + wProvider + '</td>' +
             '<td class="email-cell">' + wNum + '</td>' +
             '<td class="note-cell">' + note + '</td>' +
             '<td class="col-time">' + formatDate(s.timestamp) + '</td>' +
@@ -1118,7 +1127,7 @@ function renderAdmin() {
 function exportCsv() {
   const list = loadSubmissions();
   if (list.length === 0) { alert('No submissions to export.'); return; }
-  const headers = ['id', 'name', 'email', 'walletName', 'walletNumber', 'note', 'timestamp'];
+  const headers = ['id', 'name', 'email', 'walletName', 'walletProvider', 'walletNumber', 'note', 'timestamp'];
   const rows = [headers.join(',')];
   list.forEach(s => {
     rows.push(headers.map(h => {
