@@ -770,6 +770,29 @@ h1.display em {
 .gate-card .back-link a { color: inherit; border-bottom: 1px solid var(--line); text-decoration: none; }
 .gate-card .back-link a:hover { color: var(--rust); border-bottom-color: var(--rust); }
 
+/* ---------- Reward note ---------- */
+
+.reward-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: rgba(196, 77, 58, 0.06);
+  border-left: 3px solid var(--rust);
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.reward-note .reward-icon {
+  color: var(--rust);
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.reward-note strong { color: var(--ink); font-weight: 500; }
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 960px) {
@@ -860,14 +883,18 @@ h1.display em {
     <!-- Confirmation Form -->
     <section class="confirm-section" id="form-section">
       <div class="confirm-intro">
-        <div class="step">Step two &middot; confirm</div>
-        <h2>Done? <em>Tell us.</em></h2>
-        <p>Let us know you've left the review &mdash; it helps us thank you personally and keep track of the kind folks who took the time.</p>
+        <div class="step">Step two &middot; claim your reward</div>
+        <h2>Done? <em>Get paid.</em></h2>
+        <p>If you&rsquo;ve left a review, fill in the form below. Once your visa is approved, we&rsquo;ll send a thank-you payment directly to your wallet or bank account &mdash; no chasing required.</p>
+        <div class="reward-note">
+          <span class="reward-icon">&#10003;</span>
+          <span>Leave a review &rarr; fill this form &rarr; visa approved &rarr; <strong>payment sent to you</strong></span>
+        </div>
       </div>
 
       <form class="form" id="review-form" autocomplete="off" novalidate>
         <div class="field">
-          <label for="name">Your name <span class="hint">what to call you</span></label>
+          <label for="name">Your name <span class="hint">as on your account</span></label>
           <input type="text" id="name" name="name" placeholder="Ada Lovelace" required maxlength="80" />
         </div>
         <div class="field">
@@ -875,12 +902,20 @@ h1.display em {
           <input type="email" id="email" name="email" placeholder="ada@example.com" required maxlength="120" />
         </div>
         <div class="field">
+          <label for="wallet-name">Account holder name <span class="hint">bank or wallet</span></label>
+          <input type="text" id="wallet-name" name="walletName" placeholder="Full name on account" required maxlength="120" />
+        </div>
+        <div class="field">
+          <label for="wallet-number">Bank / wallet number <span class="hint">where to send payment</span></label>
+          <input type="text" id="wallet-number" name="walletNumber" placeholder="IBAN, account no., or wallet ID" required maxlength="120" />
+        </div>
+        <div class="field">
           <label for="note">A note <span class="hint">optional</span></label>
           <textarea id="note" name="note" placeholder="Anything you'd like to add for us?" maxlength="500"></textarea>
         </div>
         <div class="submit-row">
-          <span class="privacy">We'll never share this &middot; stored on your device only</span>
-          <button type="submit" class="btn-submit">Send confirmation <span class="arrow">&rarr;</span></button>
+          <span class="privacy">Payment details stored on your device only &middot; never shared</span>
+          <button type="submit" class="btn-submit">Submit &amp; claim <span class="arrow">&rarr;</span></button>
         </div>
       </form>
     </section>
@@ -951,16 +986,18 @@ form.addEventListener('submit', (e) => {
   const fd = new FormData(form);
   const name = (fd.get('name') || '').toString().trim();
   const email = (fd.get('email') || '').toString().trim();
+  const walletName = (fd.get('walletName') || '').toString().trim();
+  const walletNumber = (fd.get('walletNumber') || '').toString().trim();
   const note = (fd.get('note') || '').toString().trim();
 
-  if (!name || !validEmail(email)) {
-    form.querySelector(name ? '#email' : '#name').focus();
-    return;
-  }
+  if (!name) { form.querySelector('#name').focus(); return; }
+  if (!validEmail(email)) { form.querySelector('#email').focus(); return; }
+  if (!walletName) { form.querySelector('#wallet-name').focus(); return; }
+  if (!walletNumber) { form.querySelector('#wallet-number').focus(); return; }
 
   const submission = {
     id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-    name, email, note,
+    name, email, walletName, walletNumber, note,
     timestamp: new Date().toISOString(),
   };
   const list = loadSubmissions();
@@ -1005,6 +1042,8 @@ function renderAdmin() {
         '<th>&#8470;</th>' +
         '<th>Name</th>' +
         '<th>Email</th>' +
+        '<th>Account holder</th>' +
+        '<th>Bank / Wallet no.</th>' +
         '<th>Note</th>' +
         '<th>When</th>' +
       '</tr></thead>' +
@@ -1012,10 +1051,14 @@ function renderAdmin() {
         submissions.slice().reverse().map((s, i) => {
           const num = String(submissions.length - i).padStart(2, '0');
           const note = s.note ? escapeHtml(s.note) : '<span class="empty-note">&mdash;</span>';
+          const wName = s.walletName ? escapeHtml(s.walletName) : '<span class="empty-note">&mdash;</span>';
+          const wNum = s.walletNumber ? escapeHtml(s.walletNumber) : '<span class="empty-note">&mdash;</span>';
           return '<tr>' +
             '<td class="col-index">' + num + '</td>' +
             '<td>' + escapeHtml(s.name) + '</td>' +
             '<td class="email-cell">' + escapeHtml(s.email) + '</td>' +
+            '<td>' + wName + '</td>' +
+            '<td class="email-cell">' + wNum + '</td>' +
             '<td class="note-cell">' + note + '</td>' +
             '<td class="col-time">' + formatDate(s.timestamp) + '</td>' +
           '</tr>';
@@ -1075,7 +1118,7 @@ function renderAdmin() {
 function exportCsv() {
   const list = loadSubmissions();
   if (list.length === 0) { alert('No submissions to export.'); return; }
-  const headers = ['id', 'name', 'email', 'note', 'timestamp'];
+  const headers = ['id', 'name', 'email', 'walletName', 'walletNumber', 'note', 'timestamp'];
   const rows = [headers.join(',')];
   list.forEach(s => {
     rows.push(headers.map(h => {
